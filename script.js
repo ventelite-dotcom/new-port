@@ -11,6 +11,11 @@ const chatbotSend = document.getElementById('chatbotSend');
 const contactForm = document.getElementById('contactForm');
 const timelineItems = document.querySelectorAll('.timeline-item');
 
+// EmailJS Configuration - YOUR CREDENTIALS
+const EMAILJS_PUBLIC_KEY = "V7FOVEFS_S_z3xEcx";
+const EMAILJS_SERVICE_ID = "service_nesec8h";
+const EMAILJS_TEMPLATE_ID = "template_blqohva";
+
 // Enhanced Knowledge Base about Yash Gupta
 const knowledgeBase = {
   greeting: [
@@ -82,6 +87,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
+  // Initialize EmailJS
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    console.log('EmailJS initialized successfully');
+  }
+  
   // Navbar scroll effect
   window.addEventListener('scroll', handleScroll);
   
@@ -100,15 +111,42 @@ function initializeApp() {
   chatbotInput.addEventListener('keypress', handleChatbotInput);
   
   // Contact form submission
-  contactForm.addEventListener('submit', handleFormSubmit);
+  contactForm.addEventListener('submit', handleFormSubmitWithEmail);
   
   // Initialize animations
   initializeSkillBars();
   initializeTimelineAnimation();
-  initializeTypewriterEffect();
   
   // Add floating particles
   createFloatingParticles();
+  
+  // Handle profile image error
+  handleProfileImage();
+}
+
+// Handle profile image loading
+function handleProfileImage() {
+  const profileImg = document.querySelector('.profile-container img');
+  const placeholder = document.querySelector('.profile-placeholder');
+  
+  if (profileImg) {
+    profileImg.onerror = function() {
+      this.style.display = 'none';
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+        placeholder.innerHTML = '<i class="fas fa-user"></i>';
+      }
+    };
+    
+    // Check if image loaded successfully
+    if (profileImg.complete && profileImg.naturalHeight === 0) {
+      profileImg.style.display = 'none';
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+        placeholder.innerHTML = '<i class="fas fa-user"></i>';
+      }
+    }
+  }
 }
 
 // Scroll handling
@@ -365,38 +403,60 @@ function animateOnScroll() {
   });
 }
 
-function initializeTypewriterEffect() {
-  // Could be implemented for hero text if desired
-}
-
-// Contact form handling
-function handleFormSubmit(e) {
+// Email Form Handling
+function handleFormSubmitWithEmail(e) {
   e.preventDefault();
   
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const btnLoader = document.getElementById('btnLoader');
+  
+  // Show loading state
+  btnText.style.display = 'none';
+  btnLoader.style.display = 'flex';
+  submitBtn.disabled = true;
+  
+  // Get form data
   const formData = {
     name: document.getElementById('name').value,
     email: document.getElementById('email').value,
-    message: document.getElementById('message').value
+    subject: document.getElementById('subject').value,
+    message: document.getElementById('message').value,
+    to_email: 'yashgupta8910890643@gmail.com',
+    time: new Date().toLocaleString()
   };
   
-  // Simulate form submission
-  showFormSuccess();
+  console.log('Sending email with data:', formData);
   
-  // Reset form
-  contactForm.reset();
+  // Send email using EmailJS
+  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, formData)
+    .then(function(response) {
+      console.log('SUCCESS!', response.status, response.text);
+      showFormMessage('✅ Message sent successfully! I\'ll get back to you soon.', 'success');
+      contactForm.reset();
+    })
+    .catch(function(error) {
+      console.log('FAILED...', error);
+      showFormMessage('❌ Failed to send message. Please try again or email me directly.', 'error');
+    })
+    .finally(function() {
+      // Reset button state
+      btnText.style.display = 'block';
+      btnLoader.style.display = 'none';
+      submitBtn.disabled = false;
+    });
 }
 
-function showFormSuccess() {
-  const submitBtn = contactForm.querySelector('button[type="submit"]');
-  const originalText = submitBtn.innerHTML;
+function showFormMessage(message, type) {
+  const formMessage = document.getElementById('formMessage');
+  formMessage.textContent = message;
+  formMessage.className = `form-message ${type}`;
+  formMessage.style.display = 'block';
   
-  submitBtn.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
-  submitBtn.style.background = 'var(--success)';
-  
+  // Auto hide after 5 seconds
   setTimeout(() => {
-    submitBtn.innerHTML = originalText;
-    submitBtn.style.background = '';
-  }, 3000);
+    formMessage.style.display = 'none';
+  }, 5000);
 }
 
 // Floating particles effect
@@ -424,7 +484,7 @@ function getRandomGradient() {
   return gradients[Math.floor(Math.random() * gradients.length)];
 }
 
-// Add CSS for typing indicator
+// Add CSS for typing indicator and form elements
 const style = document.createElement('style');
 style.textContent = `
   .typing-indicator .message-content {
@@ -458,6 +518,60 @@ style.textContent = `
       transform: scale(1);
       opacity: 1;
     }
+  }
+
+  /* Form loader styles */
+  .btn-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .loader-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Form message styles */
+  .form-message {
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 20px;
+    text-align: center;
+    font-weight: 500;
+    transition: var(--transition);
+  }
+
+  .form-message.success {
+    background: rgba(46, 204, 113, 0.1);
+    color: #27ae60;
+    border: 1px solid rgba(46, 204, 113, 0.3);
+  }
+
+  .form-message.error {
+    background: rgba(231, 76, 60, 0.1);
+    color: #c0392b;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+  }
+
+  /* Profile placeholder */
+  .profile-placeholder {
+    width: 100%;
+    height: 100%;
+    background: var(--gradient-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 4rem;
   }
 `;
 document.head.appendChild(style);
